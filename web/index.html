@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CatLocal · 本地统一接入</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111823; --panel2:#0e141c; --line:#1e2a38; --txt:#e6edf6; --dim:#8aa0b6;
+    --ok:#3ddc97; --warn:#ffb020; --err:#ff5d5d; --accent:#5b8cff; --accent2:#7c5cff;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Cascadia Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 15% -10%,#16233a 0%,#0b0f14 55%);color:var(--txt);
+    font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1280px;margin:0 auto;padding:20px 18px 60px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:grid;place-items:center;font-weight:800;font-size:17px;color:#fff}
+  h1{font-size:19px;margin:0;letter-spacing:.3px}
+  .sub{color:var(--dim);font-size:12px}
+  .pills{display:flex;gap:8px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:5px 11px;font-size:12px;color:var(--dim)}
+  .dot{width:8px;height:8px;border-radius:50%;background:#5b6b7d}
+  .dot.ok{background:var(--ok);box-shadow:0 0 8px rgba(61,220,151,.6)}
+  .dot.warn{background:var(--warn);box-shadow:0 0 8px rgba(255,176,32,.5)}
+  .dot.err{background:var(--err);box-shadow:0 0 8px rgba(255,93,93,.5)}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{background:linear-gradient(180deg,var(--panel) 0%,var(--panel2) 100%);border:1px solid var(--line);
+    border-radius:14px;padding:16px;grid-column:span 12;box-shadow:0 8px 30px rgba(0,0,0,.22)}
+  .card h2{margin:0 0 12px;font-size:14px;letter-spacing:.4px;color:#cfe0f5;display:flex;align-items:center;gap:8px}
+  .card h2 .tag{font-size:11px;color:var(--dim);font-weight:400}
+  @media(min-width:900px){ .c6{grid-column:span 6} .c4{grid-column:span 4} .c8{grid-column:span 8} .c12{grid-column:span 12} }
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+  .kpi{background:#0b1219;border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+  .kpi .k{font-size:11px;color:var(--dim);letter-spacing:.4px}
+  .kpi .v{font-size:20px;font-weight:700;font-family:var(--mono)}
+  .kpi .v small{font-size:12px;color:var(--dim);font-weight:400}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 8px;border-bottom:1px solid #16202c;text-align:left;vertical-align:top}
+  th{color:var(--dim);font-weight:600;font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+  tr:last-child td{border-bottom:none}
+  code,pre,.mono{font-family:var(--mono);font-size:12px}
+  pre{background:#080d13;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;max-height:320px;margin:0}
+  button,select,input[type=text],input[type=number],textarea{font:inherit;color:var(--txt);background:#0b1219;
+    border:1px solid var(--line);border-radius:9px;padding:7px 11px;outline:none}
+  button{cursor:pointer;transition:.15s}
+  button:hover{border-color:#2c4054;background:#101a24}
+  button.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff;font-weight:600}
+  button.danger{color:#ff9b9b;border-color:#4a2323}
+  button.small{padding:4px 8px;font-size:12px;border-radius:7px}
+  textarea{width:100%;min-height:90px;resize:vertical}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .muted{color:var(--dim)}
+  .badge{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .badge.ok{color:var(--ok);border-color:#1d4436;background:#0c1f18}
+  .badge.warn{color:var(--warn);border-color:#463517;background:#1d1509}
+  .badge.err{color:var(--err);border-color:#4a2323;background:#1c0f10}
+  .badge.info{color:#9fc0ff;border-color:#1e3352;background:#0c1726}
+  .sep{height:1px;background:var(--line);margin:12px 0}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+  .kv .k{color:var(--dim)}
+  .toast{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:99}
+  .toast div{background:#132030;border:1px solid #26405a;border-left:3px solid var(--accent);padding:10px 14px;
+    border-radius:9px;font-size:13px;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:420px}
+  .toast div.err{border-left-color:var(--err)} .toast div.ok{border-left-color:var(--ok)}
+  .hint{font-size:12px;color:var(--dim);line-height:1.7}
+  .scroll{max-height:340px;overflow:auto}
+  .logline{font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;word-break:break-all;border-bottom:1px solid #101a24;padding:3px 0}
+  .logline .lv{display:inline-block;width:44px;color:var(--dim)}
+  .logline.info .m{color:#cfe0f5} .logline.warn .m{color:#ffcf80} .logline.error .m{color:#ff9b9b}
+  details summary{cursor:pointer;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <h1>CatLocal <span class="muted" style="font-weight:400">· 本地统一接入</span></h1>
+        <div class="sub" id="subtitle">正在加载…</div>
+      </div>
+    </div>
+    <div class="pills" id="pills"></div>
+  </header>
+
+  <div class="grid">
+    <div class="card c6">
+      <h2>通道现况 <span class="tag">studio / robin</span></h2>
+      <div id="channels"><div class="muted">加载中…</div></div>
+    </div>
+    <div class="card c6">
+      <h2>吞吐与延迟 <span class="tag">内存态，重启归零</span></h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="sep"></div>
+      <div class="kv" id="latency"></div>
+    </div>
+
+    <div class="card c6">
+      <h2>Studio 账号（无头引擎）</h2>
+      <div id="studioAccounts"><div class="muted">加载中…</div></div>
+      <div class="sep"></div>
+      <details>
+        <summary>手工导入 Cookie（Cookie-Editor JSON 或 Cookie 头字符串）</summary>
+        <div style="margin-top:10px">
+          <textarea id="cookieText" placeholder='[{"name":"SID","value":"…"}, …]  或  SID=…; SAPISID=…'></textarea>
+          <div class="row" style="margin-top:8px">
+            <input type="text" id="cookieEmail" placeholder="邮箱（可选）" style="flex:1" />
+            <input type="text" id="cookieTier" placeholder="套餐 Free/Pro/Ultra（可选）" style="width:190px" />
+            <button class="primary" onclick="importCookies()">导入</button>
+          </div>
+        </div>
+      </details>
+      <div class="sep"></div>
+      <div class="flex-between">
+        <div class="hint">已有浏览器执行器在线时，可直接把浏览器里的真人会话搬进无头引擎。</div>
+        <button onclick="collectFromBrowser()">🔄 从浏览器采集</button>
+      </div>
+    </div>
+
+    <div class="card c6">
+      <h2>Robin 凭证（Summeretto）</h2>
+      <div id="robin"><div class="muted">加载中…</div></div>
+      <div class="sep"></div>
+      <details>
+        <summary>手工绑定 oauth_token（网页登录流程里拿到的那个 cookie）</summary>
+        <div style="margin-top:10px">
+          <div class="row">
+            <input type="text" id="robinEmail" placeholder="Google 邮箱" style="flex:1" />
+            <input type="text" id="robinToken" placeholder="oauth_token" style="flex:2" />
+            <button class="primary" onclick="bindRobin()">绑定</button>
+          </div>
+          <div class="hint" style="margin-top:8px">也可以直接注入 1 小时有效的 ya29 访问令牌（不自动续期）。</div>
+          <div class="row" style="margin-top:6px">
+            <input type="text" id="robinYa29" placeholder="ya29.…" style="flex:3" />
+            <button onclick="injectYa29()">注入令牌</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="card c4">
+      <h2>最近请求</h2>
+      <div class="scroll" id="recent"><div class="muted">加载中…</div></div>
+    </div>
+
+    <div class="card c4">
+      <h2>模型分派 <span class="tag">前缀决定通道</span></h2>
+      <div class="scroll" id="models"><div class="muted">加载中…</div></div>
+    </div>
+
+    <div class="card c4">
+      <h2>客户端密钥</h2>
+      <div class="row" style="margin-bottom:10px">
+        <input type="text" id="keyName" placeholder="新密钥名称" style="flex:1" />
+        <select id="keyChannels">
+          <option value="*">全部通道</option>
+          <option value="studio">仅 studio</option>
+          <option value="robin">仅 robin</option>
+        </select>
+        <button class="primary" onclick="createKey()">生成</button>
+      </div>
+      <div class="scroll" id="keys"><div class="muted">加载中…</div></div>
+    </div>
+
+    <div class="card c12">
+      <h2>接入指引 <span class="tag">cat 脚本 / OpenAI 客户端 / Gemini 客户端</span></h2>
+      <div class="grid" style="gap:12px">
+        <div class="c4" style="grid-column:span 4">
+          <div class="kv" id="catInfo"></div>
+        </div>
+        <div class="c8" style="grid-column:span 8">
+          <pre id="cheatsheet">加载中…</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="card c6">
+      <h2>并发与调度 <span class="tag">立即生效</span></h2>
+      <div id="concurrency"></div>
+    </div>
+
+    <div class="card c6">
+      <h2>运行设置</h2>
+      <div id="settings"></div>
+    </div>
+
+    <div class="card c12">
+      <h2>日志 <span class="tag">最近 200 条</span>
+        <span style="margin-left:auto" class="row">
+          <select id="logLevel" onchange="loadLogs()">
+            <option value="">全部</option><option value="info">info+</option><option value="warn">warn+</option><option value="error">仅错误</option>
+          </select>
+          <button class="small" onclick="loadLogs()">刷新</button>
+        </span>
+      </h2>
+      <div class="scroll" id="logs"><div class="muted">加载中…</div></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+let adminToken = localStorage.getItem("catlocal_admin") || "";
+let state = { overview: null, models: [], accounts: null };
+
+// 面板启动时会并发打 4 个接口，若都没口令就会同时 401 → 会叠出 4 个输入框。
+// 这里把「问口令」串成单个共享 promise，用户取消后也不再反复弹。
+let authPrompt = null;
+let authCancelled = false;
+
+function askAdminToken() {
+  if (authPrompt) return authPrompt;
+  authPrompt = (async () => {
+    const input = prompt("请输入管理口令（config.json → auth.adminToken）：");
+    if (input) {
+      adminToken = input;
+      localStorage.setItem("catlocal_admin", input);
+      authCancelled = false;
+    } else {
+      authCancelled = true;
+    }
+    return Boolean(input);
+  })();
+  authPrompt.finally(() => { authPrompt = null; });
+  return authPrompt;
+}
+
+function toast(msg, kind = "") {
+  const d = el("div", kind, esc(msg));
+  $("#toast").appendChild(d);
+  setTimeout(() => d.remove(), 5200);
+}
+
+async function api(path, opts = {}) {
+  const headers = { "content-type": "application/json", ...(opts.headers || {}) };
+  const t = adminToken || localStorage.getItem("catlocal_admin") || "";
+  if (t) headers["x-api-key"] = t;
+  if (opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
+  const resp = await fetch(path, { ...opts, headers });
+  const text = await resp.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+  if (!resp.ok) {
+    if (resp.status === 401 && !authCancelled && !opts._retried) {
+      const ok = await askAdminToken();
+      if (ok) return api(path, { ...opts, _retried: true });
+    }
+    if (resp.status === 401) throw new Error("口令不正确或未填写：点右下角「管理口令」填 config.json 里的 auth.adminToken");
+    throw new Error((data && (data.error?.message || data.detail)) || `HTTP ${resp.status}`);
+  }
+  return data;
+}
+
+const dotClass = (ok) => (ok === true ? "ok" : ok === false ? "err" : "warn");
+
+function renderOverview(o) {
+  state.overview = o;
+  const g = o.gateway, m = o.metrics;
+  $("#subtitle").textContent = `${g.baseUrl} · 运行 ${fmtDur(o.gateway.uptimeMs)} · v${g.version}`;
+  const pills = [
+    ["网关", true, "运行中"],
+    ["studio", o.channels.studio?.health?.ok, o.channels.studio?.health?.ok ? `${o.channels.studio.health.latencyMs}ms` : (o.channels.studio?.enabled ? "未就绪" : "已禁用")],
+    ["robin", o.channels.robin?.health?.ok, o.channels.robin?.health?.ok ? `${o.channels.robin.health.latencyMs}ms` : (o.channels.robin?.enabled ? "未就绪" : "已禁用")],
+    ["执行器", o.executors.length > 0, `${o.executors.length} 台`],
+    ["密钥", true, `${o.store.keys} 把`],
+  ];
+  // 凭证自愈：发生过才显示，避免面板噪音
+  const rc = o.recovery;
+  if (rc && (rc.attempts > 0 || rc.recovered > 0)) {
+    pills.push(["自愈", rc.lastError ? false : true, rc.recovered > 0 ? `已恢复 ${rc.recovered} 次` : `尝试 ${rc.attempts} 次`]);
+  }
+  $("#pills").innerHTML = pills.map(([n, ok, txt]) => `<span class="pill"><span class="dot ${dotClass(ok)}"></span>${esc(n)} · ${esc(txt)}</span>`).join("");
+
+  // 通道卡片
+  const chHtml = Object.entries(o.channels).map(([name, c]) => {
+    const h = c.health || {};
+    const badge = h.ok === true ? `<span class="badge ok">健康 ${h.latencyMs ?? "-"}ms</span>` : h.ok === false ? `<span class="badge err">不可用</span>` : `<span class="badge warn">未检测</span>`;
+    const eng = o.engines[name] || {};
+    return `<div style="margin-bottom:12px">
+      <div class="flex-between">
+        <div><b>${esc(c.label)}</b> ${c.enabled ? "" : '<span class="badge err">已禁用</span>'} ${badge}</div>
+        <div class="row">
+          <button class="small" onclick="channelAction('${name}','health')">测活</button>
+          <button class="small" onclick="channelAction('${name}','toggle')">${c.enabled ? "禁用" : "启用"}</button>
+          <button class="small" onclick="channelAction('${name}','restart')">重启引擎</button>
+        </div>
+      </div>
+      <div class="kv" style="margin-top:6px">
+        <div class="k">上游</div><div class="mono">${esc(c.baseUrl)}</div>
+        <div class="k">在跑 / 排队</div><div class="mono">${c.inflight} / ${c.limiter.queued} （并发上限 ${c.limiter.concurrency}，峰值 ${c.limiter.peak}）</div>
+        <div class="k">引擎进程</div><div>${eng.status ? `<span class="badge ${eng.status === "running" ? "ok" : eng.status === "stopped" || eng.status === "external" ? "info" : "warn"}">${esc(eng.status)}</span> ${eng.pid ? "pid " + eng.pid : ""} ${eng.restarts ? "重启 " + eng.restarts + " 次" : ""}` : "-"}</div>
+        ${h.error ? `<div class="k">错误</div><div style="color:#ff9b9b">${esc(h.error)}</div>` : ""}
+        ${h.info ? `<div class="k">细节</div><div class="mono muted">${esc(compactInfo(name, h.info))}</div>` : ""}
+      </div></div>`;
+  }).join("");
+  $("#channels").innerHTML = chHtml;
+
+  // KPI
+  const tot = m.total || {};
+  const kpis = [
+    ["请求总数", tot.requests || 0],
+    ["成功", tot.ok || 0],
+    ["失败", tot.error || 0],
+    ["流式中", m.inflight || 0],
+    ["成功率", (tot.requests ? Math.round((100 * tot.ok) / tot.requests) : 0) + "%"],
+    ["p50", (m.latency?.p50 ?? "-") + "ms"],
+    ["p95", (m.latency?.p95 ?? "-") + "ms"],
+  ];
+  $("#kpis").innerHTML = kpis.map(([k, v]) => `<div class="kpi"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>`).join("");
+  const chs = m.channels || {};
+  $("#latency").innerHTML = Object.entries(chs).map(([n, s]) =>
+    `<div class="k">${esc(n)}</div><div class="mono">${s.requests} 次 · 成功率 ${s.successRate != null ? Math.round(s.successRate * 100) + "%" : "-"} · p50 ${s.p50 ?? "-"}ms · p95 ${s.p95 ?? "-"}ms · tok↓${s.tokensIn || 0}/↑${s.tokensOut || 0}</div>`
+  ).join("") || '<div class="k">—</div><div class="muted">还没有请求</div>';
+
+  // 最近请求
+  const recent = m.recent || [];
+  $("#recent").innerHTML = recent.length
+    ? `<table><thead><tr><th>时间</th><th>通道</th><th>模型</th><th>结果</th><th>耗时</th></tr></thead><tbody>${
+        recent.map((r) => `<tr>
+          <td class="mono muted">${esc(new Date(r.at).toLocaleTimeString())}</td>
+          <td><span class="badge info">${esc(r.channel)}</span></td>
+          <td class="mono">${esc(String(r.model).slice(0, 28))}</td>
+          <td>${r.ok ? '<span class="badge ok">ok</span>' : r.cancelled ? '<span class="badge warn">取消</span>' : `<span class="badge err">${esc(r.status || "err")}</span>`}</td>
+          <td class="mono">${r.latencyMs != null ? r.latencyMs + "ms" : "-"}</td>
+        </tr>`).join("")}</tbody></table>`
+    : '<div class="muted">还没有请求</div>';
+
+  // 执行器
+  if (o.executors.length) {
+    $("#pills").insertAdjacentHTML("beforeend", `<span class="pill" title="${esc(o.executors.map(e => `${e.id} v${e.clientVersion}`).join(", "))}"><span class="dot ok"></span>浏览器 ${o.executors.length} 台在线</span>`);
+  }
+
+  // 模型分派
+  renderModels();
+
+  // cat 信息
+  const catInfo = o.cat || {};
+  $("#catInfo").innerHTML = `
+    <div class="k">脚本地址</div><div><a href="${esc(catInfo.scriptUrl || "#")}" target="_blank">script.user.js</a></div>
+    <div class="k">脚本版本</div><div class="mono">${esc(catInfo.version || catInfo.error || "-")}</div>
+    <div class="k">WS 端点</div><div class="mono">${esc(catInfo.wsUrl || "-")}</div>
+    <div class="k">Cookie 推送</div><div class="mono">/api/pggo/push</div>
+    <div class="k">Robin 绑定</div><div class="mono">/api/robin/bind-by-key</div>
+  `;
+  const base = g.baseUrl;
+  const needKey = Boolean(o.auth?.requireKey);
+  $("#cheatsheet").textContent = [
+    "# cat 用户脚本（Tampermonkey / Violentmonkey）",
+    `安装本机版：${base}/api/pg/script.user.js`,
+    needKey ? `脚本面板里填 Key：上面「客户端密钥」任一把（cat- 开头）` : "脚本已内置本机 Key，装完直接连，不用填",
+    "",
+    "# OpenAI 客户端（NextChat / Cherry Studio / LobeChat）",
+    needKey ? `Base URL: ${base}/v1        API Key: 上面任一把` : `Base URL: ${base}/v1        不需要 Key（本机不校验）`,
+    `模型：pg/gemini-3.8-flash（studio 无头）  robin/gemini-4-argon（robin 高速）`,
+    "",
+    "# Gemini 客户端（Google 官方 SDK / gemini 兼容客户端）",
+    `Base URL: ${base}      api_version: v1beta`,
+    `模型：gemini-3.8-flash（默认 studio）  robin/gemini-4-argon`,
+    "",
+    "# curl 自测",
+    needKey
+      ? `curl ${base}/v1/chat/completions -H "x-api-key: <KEY>" -H "content-type: application/json" \\`
+      : `curl ${base}/v1/chat/completions -H "content-type: application/json" \\`,
+    `  -d '{"model":"gemini-3.8-flash","messages":[{"role":"user","content":"你好"}]}'`,
+  ].join("\n");
+
+  renderConcurrency(o);
+  renderSettings(o);
+}
+
+function compactInfo(name, info) {
+  if (name === "studio") {
+    const a = info.accounts;
+    return `accounts=${a ? a.total : "-"} active=${a?.active ?? "-"} tiers=${a ? JSON.stringify(a.tiers) : "-"}`;
+  }
+  return JSON.stringify(info).slice(0, 180);
+}
+
+async function renderModels() {
+  if (!state.models.length) {
+    try { state.models = (await api("/admin/api/models")).models || []; } catch { return; }
+  }
+  const groups = {};
+  for (const m of state.models) (groups[m.channel] ||= []).push(m);
+  $("#models").innerHTML = Object.entries(groups).map(([ch, list]) => `
+    <div style="margin-bottom:10px"><div class="muted" style="font-size:11px;letter-spacing:.5px">${esc(ch.toUpperCase())} · ${list.length}</div>
+    ${list.slice(0, 40).map((m) => `<div class="mono" style="padding:2px 0"><span class="badge info">${esc(m.prefixed)}</span> <span class="muted">${esc(m.displayName || "")}</span></div>`).join("")}</div>
+  `).join("") || '<div class="muted">暂无可列模型（引擎未就绪？）</div>';
+}
+
+function renderConcurrency(o) {
+  $("#concurrency").innerHTML = Object.entries(o.channels).map(([name, c]) => `
+    <div class="row" style="margin-bottom:8px">
+      <b style="width:70px">${esc(name)}</b>
+      <label class="muted">并发</label><input type="number" id="conc-${name}" value="${c.limiter.concurrency}" min="1" style="width:80px" />
+      <label class="muted">排队上限</label><input type="number" id="queue-${name}" value="${c.limiter.maxQueue}" min="0" style="width:90px" />
+      <label class="muted">排队超时(ms)</label><input type="number" id="qto-${name}" value="${c.limiter.queueTimeoutMs}" min="1000" step="1000" style="width:110px" />
+      <button class="small" onclick="resizeChannel('${name}')">应用</button>
+      <span class="muted mono">在跑 ${c.inflight} · 排队 ${c.limiter.queued} · 峰值 ${c.limiter.peak}</span>
+    </div>`).join("");
+}
+
+function renderSettings(o) {
+  $("#settings").innerHTML = `
+    <div class="kv">
+      <div class="k">客户端 Key 校验</div>
+      <div><button class="small" onclick="toggleRequireKey(${o.auth.requireKey ? "false" : "true"})">${o.auth.requireKey ? "已开启（点此关闭）" : "已关闭（点此开启）"}</button></div>
+      <div class="k">管理口令</div>
+      <div class="row"><input type="text" id="adminTokenInput" placeholder="留空则仅本机可管理" style="flex:1" /><button class="small" onclick="setAdminToken()">设置</button></div>
+      <div class="k">跨通道回退</div>
+      <div><button class="small" onclick="setFailover(${o.routing?.failover ? "false" : "true"})">${o.routing?.failover ? "已开启" : "已关闭"}</button></div>
+      <div class="k">默认通道</div>
+      <div class="row"><select id="defaultChannel"><option value="studio" ${o.routing?.defaultChannel === "studio" ? "selected" : ""}>studio</option><option value="robin" ${o.routing?.defaultChannel === "robin" ? "selected" : ""}>robin</option></select><button class="small" onclick="setDefaultChannel()">应用</button></div>
+    </div>`;
+}
+
+async function loadAccounts() {
+  try {
+    const a = await api("/admin/api/accounts");
+    state.accounts = a;
+    const list = a.studio.accounts || [];
+    $("#studioAccounts").innerHTML = a.studio.error
+      ? `<div class="badge err">${esc(a.studio.error)}</div>`
+      : list.length
+        ? `<div class="scroll"><table><thead><tr><th>账号</th><th>套餐</th><th>u</th><th>状态</th><th></th></tr></thead><tbody>${
+            list.map((x) => `<tr>
+              <td>${x.is_active ? '<span class="badge ok">活跃</span> ' : ""}${esc(x.name || x.id)}${x.email ? `<div class="muted mono" style="font-size:11px">${esc(x.email)}</div>` : ""}</td>
+              <td class="mono">${esc(x.tier || "-")}</td>
+              <td class="mono">${esc(x.auth_user ?? "0")}</td>
+              <td class="mono">${x.enabled === false ? '<span class="badge err">禁用</span>' : '<span class="badge info">可用</span>'} ${x.cooldown_until ? `<span class="badge warn">冷却</span>` : ""}</td>
+              <td class="row">
+                <button class="small" onclick="activateAccount('${esc(x.id)}')">切到</button>
+                <button class="small" onclick="toggleAccount('${esc(x.id)}')">启/停</button>
+                <button class="small danger" onclick="deleteAccount('${esc(x.id)}')">删</button>
+              </td></tr>`).join("")
+          }</tbody></table></div>`
+        : '<div class="muted">还没有账号。用 cat 脚本「推送 Cookie」，或上面的「从浏览器采集」。</div>';
+
+    const r = a.robin.status || {};
+    const cred = r.credential || {};
+    const verdict = cred.verdict || "unknown";
+    const vcls = verdict === "valid" ? "ok" : verdict === "unverified" || verdict === "unbound" ? "warn" : "err";
+    $("#robin").innerHTML = a.robin.error
+      ? `<div class="badge err">${esc(a.robin.error)}</div>`
+      : `<div class="kv">
+          <div class="k">绑定邮箱</div><div>${esc(r.email || "—")}</div>
+          <div class="k">凭证判定</div><div><span class="badge ${vcls}">${esc(verdict)}</span> ${cred.usable ? '<span class="badge ok">可用</span>' : ""}</div>
+          <div class="k">token 尾号</div><div class="mono">${esc(r.tokenTail || "—")}</div>
+          <div class="k">来源</div><div class="mono">${esc(r.source || "—")}</div>
+        </div>`;
+  } catch (err) {
+    $("#studioAccounts").innerHTML = `<div class="badge err">${esc(err.message)}</div>`;
+  }
+}
+
+async function loadKeys() {
+  try {
+    const { keys } = await api("/admin/api/keys");
+    $("#keys").innerHTML = keys.length
+      ? `<table><thead><tr><th>名称</th><th>Key</th><th>通道</th><th></th></tr></thead><tbody>${
+          keys.map((k) => `<tr>
+            <td>${esc(k.name)}<div class="muted mono" style="font-size:11px">${k.requests || 0} 次</div></td>
+            <td class="mono"><a href="#" onclick="copyText('${esc(k.token)}');return false" title="点击复制">${esc(k.token.slice(0, 14))}…</a></td>
+            <td class="mono">${esc((k.channels || []).join(","))}</td>
+            <td><button class="small danger" onclick="deleteKey('${esc(k.id)}')">吊销</button></td>
+          </tr>`).join("")
+        }</tbody></table>`
+      : '<div class="muted">还没有密钥</div>';
+  } catch (err) { $("#keys").innerHTML = `<div class="badge err">${esc(err.message)}</div>`; }
+}
+
+async function loadLogs() {
+  const lv = $("#logLevel").value;
+  try {
+    const { lines } = await api(`/admin/api/logs?limit=200${lv ? "&level=" + lv : ""}`);
+    $("#logs").innerHTML = lines.map((l) => `<div class="logline ${esc(l.level)}"><span class="lv">${esc(l.level)}</span><span class="muted">${esc(l.ts.slice(11, 19))}</span> <span class="m">${esc(l.msg)}</span>${l.meta ? ` <span class="muted">${esc(JSON.stringify(l.meta).slice(0, 200))}</span>` : ""}</div>`).join("") || '<div class="muted">暂无日志</div>';
+  } catch (err) { $("#logs").innerHTML = `<div class="badge err">${esc(err.message)}</div>`; }
+}
+
+// ── 操作 ────────────────────────────────────────────────
+async function refresh() {
+  try {
+    const o = await api("/admin/api/overview");
+    renderOverview(o);
+  } catch (err) {
+    $("#subtitle").textContent = "无法连接网关：" + err.message;
+  }
+}
+async function channelAction(name, action) {
+  try {
+    if (action === "toggle") {
+      const cur = state.overview.channels[name].enabled;
+      await api(`/admin/api/channels/${name}/toggle`, { method: "POST", body: { enabled: !cur } });
+      toast(`通道 ${name} 已${cur ? "禁用" : "启用"}`, "ok");
+    } else if (action === "health") {
+      const r = await api(`/admin/api/channels/${name}/health`, { method: "POST", body: {} });
+      toast(`${name}: ${r.health.ok ? "健康 " + r.health.latencyMs + "ms" : "不可用 " + (r.health.error || "")}`, r.health.ok ? "ok" : "err");
+    } else if (action === "restart") {
+      toast(`正在重启 ${name} 引擎…`);
+      const r = await api(`/admin/api/channels/${name}/restart`, { method: "POST", body: {} });
+      toast(`${name} 引擎：${JSON.stringify(r.engines?.[name]?.status || "ok")}`, "ok");
+    }
+    await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function resizeChannel(name) {
+  const body = {
+    concurrency: Number($("#conc-" + name).value),
+    maxQueue: Number($("#queue-" + name).value),
+    queueTimeoutMs: Number($("#qto-" + name).value),
+  };
+  try { await api(`/admin/api/channels/${name}/resize`, { method: "POST", body }); toast(`${name} 并发 → ${body.concurrency}`, "ok"); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function createKey() {
+  try {
+    const r = await api("/admin/api/keys", { method: "POST", body: { name: $("#keyName").value || "未命名", channels: [$("#keyChannels").value] } });
+    toast("已生成密钥：" + r.key.token, "ok");
+    $("#keyName").value = "";
+    await loadKeys(); await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function deleteKey(id) {
+  if (!confirm("吊销这把密钥？")) return;
+  try { await api(`/admin/api/keys/${id}`, { method: "DELETE" }); toast("已吊销", "ok"); await loadKeys(); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function importCookies() {
+  const text = $("#cookieText").value.trim();
+  if (!text) return toast("先粘贴 Cookie 内容", "err");
+  try {
+    const r = await api("/admin/api/accounts/import", { method: "POST", body: { cookies: text, email: $("#cookieEmail").value || undefined, tier: $("#cookieTier").value || undefined } });
+    toast("导入成功：" + (r.account?.name || ""), "ok");
+    $("#cookieText").value = "";
+    await loadAccounts(); await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function collectFromBrowser() {
+  const token = prompt("粘贴一把客户端 Key（供执行器匹配；留空则任选在线执行器）：", localStorage.getItem("catlocal_lastkey") || "");
+  if (token === null) return;
+  localStorage.setItem("catlocal_lastkey", token || "");
+  try {
+    const r = await api("/admin/api/accounts/collect", { method: "POST", body: { token: token || "", email: $("#cookieEmail").value || undefined } });
+    toast(`采集完成：${r.cookies} 条 Cookie，账号 ${r.account?.name || "-"}`, "ok");
+    await loadAccounts(); await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function activateAccount(id) {
+  try { await api(`/admin/api/accounts/${id}/activate`, { method: "POST", body: {} }); toast("已切换活跃账号", "ok"); await loadAccounts(); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function toggleAccount(id) {
+  try { await api(`/admin/api/accounts/${id}/toggle`, { method: "POST", body: {} }); await loadAccounts(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function deleteAccount(id) {
+  if (!confirm("删除这个账号？")) return;
+  try { await api(`/admin/api/accounts/${id}`, { method: "DELETE" }); toast("已删除", "ok"); await loadAccounts(); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function bindRobin() {
+  try {
+    const r = await api("/admin/api/robin/bind", { method: "POST", body: { email: $("#robinEmail").value, oauth_token: $("#robinToken").value } });
+    toast("绑定成功：" + (r.email || ""), "ok");
+    $("#robinToken").value = "";
+    await loadAccounts(); await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function injectYa29() {
+  try { await api("/admin/api/robin/token", { method: "POST", body: { token: $("#robinYa29").value } }); toast("令牌已注入（1 小时内有效）", "ok"); $("#robinYa29").value = ""; await loadAccounts(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function toggleRequireKey(v) {
+  try { await api("/admin/api/config", { method: "PUT", body: { auth: { requireKey: v } } }); toast("已更新", "ok"); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function setAdminToken() {
+  const v = $("#adminTokenInput").value;
+  try {
+    await api("/admin/api/config", { method: "PUT", body: { auth: { adminToken: v } } });
+    adminToken = v; localStorage.setItem("catlocal_admin", v);
+    toast(v ? "管理口令已设置" : "管理口令已清空（仅本机可管理）", "ok"); await refresh();
+  } catch (err) { toast(err.message, "err"); }
+}
+async function setFailover(v) {
+  try { await api("/admin/api/config", { method: "PUT", body: { routing: { failover: v } } }); toast(v ? "已开启跨通道回退" : "已关闭跨通道回退", "ok"); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+async function setDefaultChannel() {
+  try { await api("/admin/api/config", { method: "PUT", body: { routing: { defaultChannel: $("#defaultChannel").value } } }); toast("已切换默认通道", "ok"); await refresh(); }
+  catch (err) { toast(err.message, "err"); }
+}
+function copyText(t) { navigator.clipboard?.writeText(t).then(() => toast("已复制到剪贴板", "ok")).catch(() => toast("复制失败，请手动选择", "err")); }
+function fmtDur(ms) {
+  if (ms == null) return "-";
+  const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+  if (d) return `${d}天${h}时`; if (h) return `${h}时${m}分`; if (m) return `${m}分${s % 60}秒`; return `${s}秒`;
+}
+
+$("#logLevel").value = "";
+refresh(); loadAccounts(); loadKeys(); loadLogs();
+setInterval(() => { refresh(); }, 5000);
+setInterval(() => { if (!document.hidden) loadLogs(); }, 15000);
+</script>
+</body>
+</html>
