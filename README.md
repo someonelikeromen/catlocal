@@ -137,6 +137,14 @@ http://127.0.0.1:8788/...          ← 其余 API 仍走明文本机端口
 3. 打开 AI Studio Playground 页面即可——**不需要填 Key**：本机版脚本已内置默认 Key，网关也不校验。
 4. 需要给 studio 供凭证时，点面板「☁ 推送 Cookie」；需要给 robin 供凭证时，在 Google 登录流程页点「🦜 推送 Robin 凭证」——两者都直接进本地，不再经过任何云端。
 
+脚本母版已随仓库提供：[`userscript/catiecli.user.js`](userscript/catiecli.user.js)（Catiecli Playground Executor 2.21.0，**第三方作品**，权利归属与再分发说明见 [`userscript/NOTICE.md`](userscript/NOTICE.md)）。网关按以下顺序找母版，前面的优先：
+
+1. `config.json` 的 `cat.sourcePath`
+2. `data/catiecli.user.js`（运行时自动留的副本，可手动放新版）
+3. 仓库内置的 `userscript/catiecli.user.js`
+
+所以克隆下来就能直接下发，不需要再去下载原始 txt 文件。想换版本，把新文件放到 `data/catiecli.user.js` 即可覆盖内置版。
+
 脚本的四个云端地址被替换为：
 
 | 脚本常量 | 本地 |
@@ -380,6 +388,8 @@ Tampermonkey 需把「允许脚本访问 Cookie」设为 **all**（HttpOnly 的�
 
 `config.json` 与 `data/`（凭证、密钥、日志、统计、自签证书）都在 `.gitignore` 里，不会被提交。首次运行请执行 `npm run config:init` 生成你自己的 `config.json`（随机密钥、自动挑空闲端口）。
 
+`userscript/` 目录是第三方脚本的收录，不在 MIT 覆盖范围内，见 [userscript/NOTICE.md](userscript/NOTICE.md)。
+
 ## License
 
-[MIT](LICENSE)
+本仓库自身代码使用 [MIT](LICENSE)；`userscript/` 除外（第三方作品，权利归原作者）。

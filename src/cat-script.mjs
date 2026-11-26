@@ -5,7 +5,11 @@
 // 所有替换都带锚点断言：上游脚本改版导致锚点消失时会明确报错，而不是静默产出坏脚本。
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { DATA_DIR } from "./config.mjs";
+
+// 仓库内置的用户脚本母版目录（随仓库发布，开箱即用，不依赖用户另存一份）
+const BUNDLED_SCRIPT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "userscript");
 
 const LOCAL_BLOCK_ANCHOR = "    // ==================== WS 客户端 ====================";
 const SWITCH_ANCHOR = `                case "request":`;
@@ -84,6 +88,9 @@ export class CatScript {
     if (this.config.cat?.sourcePath) candidates.push(this.config.cat.sourcePath);
     candidates.push(path.join(DATA_DIR, "catiecli.user.js"));
     candidates.push(path.join(DATA_DIR, "catiecli.user.txt"));
+    // 仓库内置母版（发布版开箱即用；放在最后，不覆盖用户自己放的版本）
+    candidates.push(path.join(BUNDLED_SCRIPT_DIR, "catiecli.user.js"));
+    candidates.push(path.join(BUNDLED_SCRIPT_DIR, "catiecli.user.txt"));
 
     for (const file of candidates) {
       try {
@@ -107,7 +114,8 @@ export class CatScript {
       }
     }
     throw new Error(
-      "找不到 catiecli 用户脚本母版。请把 Catiecli Playground Executor-*.txt 放到 data/catiecli.user.js，" +
+      "找不到 catiecli 用户脚本母版。仓库内置版应位于 userscript/catiecli.user.js；" +
+        "也可把 Catiecli Playground Executor-*.txt 放到 data/catiecli.user.js，" +
         "或在 config.json 的 cat.sourcePath 指到它的位置。"
     );
   }
