@@ -1,0 +1,3 @@
+# 用户脚本按上游原样发布，禁止换行转换，保证任何平台 clone 下来的字节完全一致
+# （NOTICE.md 里记录了它的 SHA-256；一旦被 CRLF 转换，哈希就对不上）
+userscript/*.user.js -text
